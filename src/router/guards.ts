@@ -10,12 +10,10 @@ export async function authGuard(
 ): Promise<RouteLocationRaw | void> {
     const authStore = useAuthStore()
 
-    // If no token, redirect to login
     if (!authStore.token) {
         return { name: 'Login', query: { redirect: to.fullPath } }
     }
 
-    // If we have a token but no user data, try to fetch it
     if (!authStore.user) {
         const isValid = await authStore.fetchUser()
         if (!isValid) {
@@ -23,8 +21,22 @@ export async function authGuard(
         }
     }
 
-    if (!authStore.isAdmin) {
-        return { name: 'Forbidden' }
+    // Check for specific ROLE requirement
+    // Example: meta: { role: 'admin' }
+    if (to.meta.role) {
+        const requiredRole = to.meta.role as string
+        if (!authStore.hasRole(requiredRole)) {
+            return { name: 'Forbidden' }
+        }
+    }
+
+    // Check for specific PERMISSION requirement
+    // Example: meta: { permission: 'users.view' }
+    if (to.meta.permission) {
+        const requiredPermission = to.meta.permission as string
+        if (!authStore.can(requiredPermission)) {
+            return { name: 'Forbidden' }
+        }
     }
 }
 
@@ -37,7 +49,7 @@ export async function guestGuard(
 ): Promise<RouteLocationRaw | void> {
     const authStore = useAuthStore()
 
-    if (!authStore.token || !authStore.isAdmin) {
+    if (!authStore.token) {
         return
     }
 
@@ -48,5 +60,5 @@ export async function guestGuard(
         }
     }
 
-    return { name: 'AdminDashboard' }
+    return { name: 'Dashboard' }
 }
