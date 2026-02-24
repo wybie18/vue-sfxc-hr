@@ -13,7 +13,65 @@ export const useAuthStore = defineStore('auth', () => {
 
     // Getters
     const isAuthenticated = computed(() => !!token.value && !!user.value)
-    const isAdmin = computed(() => user.value?.role === 'admin')
+
+    /**
+     * Returns an array of role slugs assigned to the user
+     * Example: ['admin', 'program-head']
+     */
+    const activeRoles = computed<string[]>(() => {
+        if (!user.value || !user.value.roles) return []
+        return user.value.roles.map((role) => role.slug)
+    })
+
+    /**
+     * Returns a Set of all unique permission slugs the user has
+     * Flattens User -> Roles -> Permissions
+     */
+    const activePermissions = computed<Set<string>>(() => {
+        const permissions = new Set<string>()
+
+        if (!user.value || !user.value.roles) return permissions
+
+        user.value.roles.forEach((role) => {
+            if (role.permissions) {
+                role.permissions.forEach((permission) => {
+                    permissions.add(permission.slug)
+                })
+            }
+        })
+
+        return permissions
+    })
+
+    /**
+     * Check if user has a specific role
+     */
+    function hasRole(roleSlug: string): boolean {
+        return activeRoles.value.includes(roleSlug)
+    }
+
+    /**
+     * Check if user has a specific permission
+     * Automatically returns TRUE if user is a 'super-admin'
+     */
+    function can(permissionSlug: string): boolean {
+        // 1. Super Admin bypass
+        if (activeRoles.value.includes('super-admin')) {
+            return true
+        }
+
+        // 2. Check actual permission list
+        return activePermissions.value.has(permissionSlug)
+    }
+
+    /**
+     * Check if user has ANY of the provided permissions
+     * Useful for combined views (e.g. "can('users.view') || can('users.create')")
+     */
+    function canAny(permissions: string[]): boolean {
+        if (activeRoles.value.includes('super-admin')) return true
+        return permissions.some((p) => activePermissions.value.has(p))
+    }
 
     async function login(credentials: LoginCredentials): Promise<boolean> {
         isLoading.value = true
@@ -85,11 +143,6 @@ export const useAuthStore = defineStore('auth', () => {
         error.value = null
     }
 
-    // Check if user has a specific role
-    function hasRole(role: 'admin' | 'user'): boolean {
-        return user.value?.role === role
-    }
-
     return {
         // State
         user,
@@ -99,13 +152,16 @@ export const useAuthStore = defineStore('auth', () => {
 
         // Getters
         isAuthenticated,
-        isAdmin,
+        activeRoles,
+        activePermissions,
+        hasRole,
+        can,
+        canAny,
 
         // Actions
         login,
         logout,
         fetchUser,
         clearError,
-        hasRole,
     }
 })
