@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import SchoolLogo from '@/components/ui/custom/logo/SchoolLogo.vue'
 import SFXCLogoOnly from '@/assets/images/logo/sfxc-logo-only.png'
 import SFXCTextOnly from '@/assets/images/logo/sfxc-text-only.png'
+import { useAuthStore } from '@/stores/auth'
 
 const backgroundImages = [
     new URL('@/assets/images/login/login-image-01.jpg', import.meta.url).href,
@@ -28,6 +29,8 @@ onUnmounted(() => {
 })
 
 const router = useRouter()
+const authStore = useAuthStore()
+
 const email = ref('')
 const password = ref('')
 const isLoading = ref(false)
@@ -38,21 +41,15 @@ const handleLogin = async () => {
     isLoading.value = true
 
     try {
-        await new Promise((resolve) => setTimeout(resolve, 1500))
+        const success = await authStore.login({
+            email: email.value,
+            password: password.value,
+        })
 
-        const mockUsers = [
-            { id: '123-123', pass: '123', role: 'student' },
-            { id: '321-321', pass: '321', role: 'faculty' },
-            { id: '444-444', pass: '444', role: 'program-head' },
-            { id: '555-555', pass: '555', role: 'office-head' },
-        ]
-
-        const user = mockUsers.find((u) => u.id === email.value && u.pass === password.value)
-
-        if (user) {
-            router.push(`/sfxc-portal/${user.role}-dashboard`) // Directs to role-specific dashboard
+        if (success) {
+            router.push('/dashboard')
         } else {
-            throw new Error('Invalid ID Number or Password.')
+            throw new Error('Invalid Email or Password.')
         }
     } catch (err: any) {
         errorMessage.value = err.message
