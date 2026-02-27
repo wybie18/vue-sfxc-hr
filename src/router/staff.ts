@@ -8,7 +8,7 @@ export const staffRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/Dashboard.vue'),
         beforeEnter: authGuard,
         meta: {
-            Layout: 'AuthLayout',
+            layout: 'auth',
             role: 'admin',
         },
     },
